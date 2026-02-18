@@ -7,3 +7,6 @@ npm-debug.log
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Archivos de claves (No subir nunca)
+js/secrets.js

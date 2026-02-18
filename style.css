@@ -139,3 +139,22 @@ body {
     border: 1px solid #dee2e6;
     z-index: 5;
 }
+
+/* Botón Mágico */
+.btn-magic {
+    background: linear-gradient(45deg, #0d6efd, #0dcaf0);
+    border: none;
+    transition: filter 0.3s;
+}
+.btn-magic:hover {
+    filter: brightness(1.1);
+}
+
+/* Animación de Flash para campos completados por IA */
+@keyframes aiFlash {
+    0% { background-color: #d1e7dd; box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25); }
+    100% { background-color: #fff; box-shadow: none; }
+}
+.ai-flash {
+    animation: aiFlash 1.5s ease-out;
+}

@@ -15,14 +15,14 @@ import {
     Timestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { GEMINI_API_KEY } from './secrets.js';
 
 // Variables globales del módulo
-let searchInput, resultsContainer, btnProcessAI, whatsappRawText, btnConfirmOrder;
-let imageModal, modalImagePreview;
+let searchInput, resultsContainer, btnProcessAI, whatsappRawText, btnConfirmOrder, btnPasteAI, btnClearForm, btnCopyResponse;
+let imageModal, modalImagePreview, responseModal;
 
 // ⚠️ SEGURIDAD: En producción, mueve esto a Firebase Cloud Functions.
-const GEMINI_API_KEY = "AIzaSyCZOR8SVr-iZovD4lRXo9cApK3cb4tHCKs"; 
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`;
 
 // CONSTANTES DE PRECIOS
 const COSTO_ANILLADO = 2000;
@@ -46,11 +46,18 @@ export async function init() {
     btnProcessAI = document.getElementById('btnProcessAI');
     whatsappRawText = document.getElementById('whatsappRawText');
     btnConfirmOrder = document.getElementById('btnConfirmOrder');
+    btnPasteAI = document.getElementById('btnPasteAI');
+    btnClearForm = document.getElementById('btnClearForm');
+    btnCopyResponse = document.getElementById('btnCopyResponse');
     
     // Elementos de Modals
     modalImagePreview = document.getElementById('modalImagePreview');
     if (document.getElementById('imageModal')) {
         imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+    }
+    if (document.getElementById('responseModal')) {
+        responseModal = new bootstrap.Modal(document.getElementById('responseModal'));
+        btnCopyResponse.addEventListener('click', copyResponseToClipboard);
     }
 
     // 2. Asignar Event Listeners
@@ -67,6 +74,7 @@ export async function init() {
 export function destroy() {
     console.log("Limpiando sección Home...");
     if (unsubBooks) unsubBooks();
+    document.removeEventListener('keydown', handleGlobalKeys);
 }
 
 function setupEventListeners() {
@@ -93,9 +101,18 @@ function setupEventListeners() {
 
     // IA
     btnProcessAI.addEventListener('click', handleAIProcess);
+    
+    // Botón Mágico (Pegar y Procesar)
+    btnPasteAI.addEventListener('click', handlePasteAndProcess);
+    
+    // Botón Limpiar
+    btnClearForm.addEventListener('click', clearForm);
 
     // Confirmar Pedido
     btnConfirmOrder.addEventListener('click', handleConfirmOrder);
+
+    // Atajo de teclado Global
+    document.addEventListener('keydown', handleGlobalKeys);
 }
 
 // --- LÓGICA DE DATOS ---
@@ -113,6 +130,41 @@ function initDataListeners() {
 
 // --- HANDLERS Y LÓGICA ESPECÍFICA ---
 
+function handleGlobalKeys(e) {
+    // F2 para Pegar y Procesar
+    if (e.key === 'F2') {
+        e.preventDefault();
+        handlePasteAndProcess();
+    }
+}
+
+function clearForm() {
+    const form = document.getElementById('orderForm');
+    form.reset();
+    document.getElementById('inputBookId').value = ''; // Limpiar ID del libro
+    // Limpiar clases visuales (validaciones y flash)
+    form.querySelectorAll('.form-control').forEach(el => el.classList.remove('is-valid', 'is-invalid', 'ai-flash'));
+    whatsappRawText.value = '';
+    document.getElementById('inputAlumno').focus();
+}
+
+async function handlePasteAndProcess() {
+    try {
+        // Leer texto del portapapeles
+        const text = await navigator.clipboard.readText();
+        if (!text.trim()) {
+            showToast("El portapapeles está vacío.", 'danger');
+            return;
+        }
+        whatsappRawText.value = text;
+        // Disparar proceso de IA
+        handleAIProcess();
+    } catch (err) {
+        console.error('Error al leer portapapeles:', err);
+        showToast("Permiso denegado. Pega el texto manualmente.", 'danger');
+    }
+}
+
 async function handleAIProcess() {
     const text = whatsappRawText.value;
     if (!text) return;
@@ -128,7 +180,11 @@ async function handleAIProcess() {
         }
     } catch (error) {
         console.error("Error IA:", error);
-        alert("Hubo un error al procesar con la IA.");
+        if (error.message.includes('429')) {
+            showToast("⏳ Velocidad excedida (15/min). Espera 1 minuto.", 'warning');
+        } else {
+            alert("Hubo un error al procesar con la IA. Revisa la consola.");
+        }
     } finally {
         btnProcessAI.innerHTML = '<i class="bi bi-magic"></i> Extraer';
         btnProcessAI.disabled = false;
@@ -136,20 +192,61 @@ async function handleAIProcess() {
 }
 
 async function handleConfirmOrder() {
-    const clienteNombre = document.getElementById('inputClienteNombre').value;
-    const clienteCelular = document.getElementById('inputClienteCelular').value;
-    const alumno = document.getElementById('inputAlumno').value;
-    const colegio = document.getElementById('inputColegio').value;
-    const grado = document.getElementById('inputGrado').value;
-    const libro = document.getElementById('inputLibro').value;
-    const senia = parseFloat(document.getElementById('inputSenia').value) || 0;
-    const total = parseFloat(document.getElementById('inputTotal').value) || 0;
+    const inputClienteNombre = document.getElementById('inputClienteNombre');
+    const inputClienteCelular = document.getElementById('inputClienteCelular');
+    const inputBookId = document.getElementById('inputBookId');
+    const inputAlumno = document.getElementById('inputAlumno');
+    const inputColegio = document.getElementById('inputColegio');
+    const inputGrado = document.getElementById('inputGrado');
+    const inputLibro = document.getElementById('inputLibro');
+    const inputSenia = document.getElementById('inputSenia');
+    const inputTotal = document.getElementById('inputTotal');
+
+    // Limpiar validaciones previas (quitar borde rojo)
+    [inputClienteCelular, inputAlumno, inputLibro, inputSenia].forEach(el => el.classList.remove('is-invalid'));
+
+    const clienteNombre = inputClienteNombre.value;
+    const clienteCelular = inputClienteCelular.value;
+    const bookId = inputBookId.value;
+    const alumno = inputAlumno.value;
+    const colegio = inputColegio.value;
+    const grado = inputGrado.value;
+    const libro = inputLibro.value;
+    const seniaVal = inputSenia.value;
+    const senia = parseFloat(seniaVal) || 0;
+    const total = parseFloat(inputTotal.value) || 0;
     
     const isClone = document.getElementById('checkClone').checked;
     const cloneQty = isClone ? parseInt(document.getElementById('cloneQty').value) : 1;
 
-    if (!libro || !alumno) {
-        alert("Faltan datos obligatorios: Alumno y Libro.");
+    let errores = [];
+
+    // Validaciones específicas
+    if (!clienteCelular) {
+        inputClienteCelular.classList.add('is-invalid');
+        errores.push("Falta el Celular del cliente.");
+    }
+    if (!alumno) {
+        inputAlumno.classList.add('is-invalid');
+        errores.push("Falta el nombre del Alumno.");
+    }
+    if (!libro) {
+        inputLibro.classList.add('is-invalid');
+        errores.push("No has seleccionado ningún Libro.");
+    }
+    if (seniaVal.trim() === '') {
+        inputSenia.classList.add('is-invalid');
+        errores.push("Debes ingresar la seña (0 si no hay).");
+    }
+
+    if (errores.length > 0) {
+        alert("Faltan datos para procesar el pedido:\n\n- " + errores.join("\n- "));
+        return;
+    }
+
+    if (senia > total) {
+        inputSenia.classList.add('is-invalid');
+        alert(`¡Error! La seña ($${senia}) supera el valor del libro ($${total}). Verifica los ceros.`);
         return;
     }
 
@@ -167,6 +264,7 @@ async function handleConfirmOrder() {
 
             promises.push(addDoc(collection(db, "pedidos"), {
                 trackingId: trackingId,
+                bookId: bookId, // Guardamos el ID del libro
                 cliente: { nombre: clienteNombre, celular: clienteCelular },
                 referenteNombre: nombreFinal || 'S/N',
                 fecha: serverTimestamp(),
@@ -183,21 +281,20 @@ async function handleConfirmOrder() {
         await Promise.all(promises);
         showToast(`¡${cloneQty} Pedido(s) guardado(s)!`);
         
-        // Limpieza parcial
-        document.getElementById('inputAlumno').value = '';
-        document.getElementById('inputGrado').value = '';
-        document.getElementById('inputLibro').value = '';
-        document.getElementById('inputSenia').value = '';
-        document.getElementById('inputTotal').value = '';
-        document.getElementById('checkClone').checked = false;
-        document.getElementById('cloneQty').value = '1';
-        document.getElementById('whatsappRawText').value = '';
+        // Limpieza completa
+        clearForm();
 
-        if (clienteCelular) {
-            const msg = isClone 
-                ? `¡Hola ${clienteNombre}! Tomamos tus ${cloneQty} pedidos de *${libro}*.`
-                : `¡Hola ${clienteNombre}! Tu pedido de *${libro}* para *${alumno}* fue registrado. Código: *#${lastTrackingId}*.`;
-            window.open(`https://wa.me/549${clienteCelular}?text=${encodeURIComponent(msg)}`, '_blank');
+        // Generar mensaje de respuesta
+        const saludo = clienteNombre ? `¡Hola ${clienteNombre}!` : `¡Hola!`;
+        const msg = isClone 
+            ? `${saludo} Tomamos tus ${cloneQty} pedidos de *${libro}*. Quedaron registrados. Te avisaremos cuando estén listos.`
+            : `${saludo} Tu pedido de *${libro}* para *${alumno}* fue registrado correctamente.\n\n📌 *Código de seguimiento:* #${lastTrackingId}\n💰 *Saldo pendiente:* $${saldo}\n\nTe avisaremos por acá cuando esté listo para retirar. ¡Gracias!`;
+
+        // Mostrar Modal de Respuesta
+        document.getElementById('responseMessageText').value = msg;
+        if (responseModal) {
+            document.getElementById('btnOpenWhatsapp').href = clienteCelular ? `https://wa.me/549${clienteCelular}?text=${encodeURIComponent(msg)}` : '#';
+            responseModal.show();
         }
 
     } catch (error) {
@@ -226,7 +323,7 @@ function renderBooks(books) {
             centerActions = `<div class="mt-2"><button class="btn btn-outline-danger btn-sm w-100 mb-1" onclick="sendWhatsApp('${book.id}', 'waitlist_notify')"><i class="bi bi-whatsapp"></i> Avisar</button><button class="btn btn-sm btn-light text-muted w-100" onclick="addToWaitlistLead('${book.id}')"><i class="bi bi-person-plus"></i> Anotar</button></div>`;
             rightAction = `<div class="bg-light d-flex align-items-center justify-content-center h-100 text-muted" style="width:50px"><i class="bi bi-hourglass-split"></i></div>`;
         } else {
-            centerActions = `<div class="d-flex gap-1 mt-2"><button class="btn btn-outline-success btn-sm flex-fill" onclick="sendWhatsApp('${book.id}', 'stock_quote')"><i class="bi bi-whatsapp"></i> Cotizar</button><button class="btn btn-outline-secondary btn-sm" onclick="copyToClipboard('${book.id}', 'stock')"><i class="bi bi-clipboard"></i> Info</button></div>`;
+            centerActions = `<div class="d-flex gap-1 mt-2"><button class="btn btn-outline-success btn-sm flex-fill" onclick="sendWhatsApp('${book.id}', 'stock_quote')"><i class="bi bi-whatsapp"></i> Cotizar</button></div>`;
             rightAction = `<button class="btn btn-primary btn-load-arrow h-100 w-100 d-flex align-items-center justify-content-center" onclick="loadBookToForm('${book.id}')" title="Cargar Pedido"><i class="bi bi-cart-plus display-6"></i></button>`;
         }
         
@@ -255,9 +352,15 @@ function exposeGlobalFunctions() {
         const book = booksCache.find(b => b.id === id);
         if (!book) return;
         const senia = Math.ceil((book.precioColor * 0.5) / 100) * 100;
-        const text = type === 'stock_quote' 
-            ? `¡Hola! Lo tenemos. El libro *${book.titulo}* sale $${book.precioColor}. Para encargarlo, señalo con $${senia} (Alias: INFOTECH.CBA). Pasame comprobante, nombre de alumno y cole. ¡Gracias!`
-            : `¡Hola! Por ahora no tenemos *${book.titulo}*, pero te anoto en lista de espera. Si llegamos a 10 interesados, lo conseguimos y te aviso por acá. ¡Saludos!`;
+        
+        let text = "";
+        if (type === 'stock_quote') {
+            const editorialInfo = book.editorial ? `\n🏢 Editorial: *${book.editorial}*` : '';
+            text = `¡Hola! Sí, lo tenemos. 📚\n\n📖 Libro: *${book.titulo}*${editorialInfo}\n✨ *A color y anillado, excelente calidad* ✨\n💲 Precio: *$${book.precioColor}*\n\nPara encargarlo, podés señar con *$${senia}*.\n\n🏦 Alias Mercado Pago:\n👉 *INFOTECH.CBA*\n\nCuando transfieras, por favor enviame:\n✅ Comprobante\n✅ Datos del alumno: *Nombre, Colegio y Grado*\n\n¡Gracias!`;
+        } else {
+            text = `¡Hola! Por ahora no tenemos *${book.titulo}*, pero te anoto en lista de espera. Si llegamos a 10 interesados, lo conseguimos y te aviso por acá. ¡Saludos!`;
+        }
+        
         copyToClipboardText(text);
     };
 
@@ -280,10 +383,10 @@ function exposeGlobalFunctions() {
     window.loadBookToForm = (id) => {
         const book = booksCache.find(b => b.id === id);
         if (!book) return;
+        document.getElementById('inputBookId').value = book.id; // Guardar ID oculto
         document.getElementById('inputLibro').value = book.titulo;
         document.getElementById('inputTotal').value = book.precioColor;
-        document.getElementById('inputSenia').value = Math.ceil((book.precioColor * 0.5) / 100) * 100;
-        document.getElementById('inputAlumno').focus();
+        document.getElementById('inputSenia').focus(); // Foco en seña para ingreso manual
     };
 
     window.viewImage = (url) => {
@@ -323,6 +426,11 @@ function exposeGlobalFunctions() {
 
 // --- UTILIDADES ---
 
+async function copyResponseToClipboard() {
+    const text = document.getElementById('responseMessageText').value;
+    copyToClipboardText(text);
+}
+
 async function copyToClipboardText(text) {
     try { await navigator.clipboard.writeText(text); showToast("¡Mensaje copiado!"); } catch (e) { console.error(e); }
 }
@@ -339,23 +447,76 @@ function showToast(message, type = 'success') {
 }
 
 async function procesarMensajeConIA(textoSucio) {
-    const prompt = `Actúa como asistente de librería. Extrae entidades de: "${textoSucio}". Devuelve JSON: {"alumno": "", "colegio": "", "grado": "", "libro_buscado": ""}`;
-    const response = await fetch(GEMINI_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+    const prompt = `
+        Tu tarea es extraer datos de un chat de WhatsApp que contiene un pedido y la respuesta de un cliente.
+
+        CHAT A ANALIZAR:
+        "${textoSucio}"
+
+        INSTRUCCIONES:
+        1.  **CLIENTE:** Busca la línea que dice "Cliente:". Si el texto es un número de teléfono, ponlo en 'cliente_celular'. Si es un nombre, en 'cliente_nombre'. Si es un texto genérico como "Envía mensajes a este mismo número", deja ambos campos vacíos.
+        2.  **ALUMNO:** Identifica el nombre de la persona que se menciona al final del chat, usualmente después de que se piden los "Datos del alumno". Este es el dato más importante.
+        3.  **COLEGIO:** Identifica el nombre del colegio. Omite palabras como "Colegio" o "Escuela".
+        4.  **GRADO:** Identifica el grado y conviértelo a un número (ej: "quinto" se convierte en "5").
+        5.  **LIBRO:** Identifica el nombre del libro que se está pidiendo.
+
+        Devuelve ESTRICTAMENTE un objeto JSON con la siguiente estructura:
+        {"cliente_nombre": "", "cliente_celular": "", "alumno": "", "colegio": "", "grado": "", "libro_buscado": ""}
+    `;
+    const response = await fetch(GEMINI_URL, { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ 
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { response_mime_type: "application/json" }
+        }) 
+    });
     if (!response.ok) throw new Error(`Error API Gemini: ${response.status}`);
     const data = await response.json();
-    let jsonString = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
-    const firstBrace = jsonString.indexOf('{'), lastBrace = jsonString.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1) jsonString = jsonString.substring(firstBrace, lastBrace + 1);
-    return JSON.parse(jsonString);
+    const parsedData = JSON.parse(data.candidates[0].content.parts[0].text);
+    console.log("Respuesta de la IA:", parsedData);
+    return parsedData;
 }
 
 function populateForm(data) {
-    if(data.alumno) document.getElementById('inputAlumno').value = data.alumno;
-    if(data.colegio) document.getElementById('inputColegio').value = data.colegio;
-    if(data.grado) document.getElementById('inputGrado').value = data.grado;
+    let nombre = data.cliente_nombre || '';
+    let celular = data.cliente_celular || '';
+
+    // Lógica Inteligente: Si el nombre parece un número de teléfono, lo movemos a celular
+    // (Ej: "549351..." o "+54 9 351...")
+    if (nombre && /^[+\d\s-]+$/.test(nombre) && nombre.replace(/\D/g, '').length > 6) {
+        if (!celular) celular = nombre; // Mover a celular manteniendo formato original
+        nombre = ''; // Dejar nombre vacío para que lo completes o la IA lo deduzca del texto
+    }
+
+    // Limpieza de prefijo país (Argentina: +54 9) para dejarlo local
+    if (celular) {
+        celular = celular.replace(/^(\+?54\s*9\s*)/, '').trim();
+        // Quitar espacios, guiones y paréntesis para dejar solo números
+        celular = celular.replace(/\D/g, '');
+    }
+
+    // Helper para llenar y resaltar visualmente
+    const fill = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && val) {
+            el.value = val;
+            el.classList.add('is-valid', 'ai-flash'); // Borde verde + Animación
+            setTimeout(() => el.classList.remove('ai-flash'), 1500); // Quitar animación (dejar borde)
+        }
+    };
+
+    if(nombre) fill('inputClienteNombre', nombre);
+    if(celular) fill('inputClienteCelular', celular);
+    if(data.alumno) fill('inputAlumno', data.alumno);
+    if(data.colegio) fill('inputColegio', data.colegio);
+    if(data.grado) fill('inputGrado', data.grado);
+
     if(data.libro_buscado) {
-        document.getElementById('inputLibro').value = data.libro_buscado;
+        // NO cargamos el libro en el input, solo buscamos
         searchInput.value = data.libro_buscado;
+        searchInput.classList.add('is-valid', 'ai-flash'); // Resaltar buscador también
+        setTimeout(() => searchInput.classList.remove('ai-flash'), 1500);
         // Disparar evento input manualmente para filtrar
         searchInput.dispatchEvent(new Event('input'));
     }

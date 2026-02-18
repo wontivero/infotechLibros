@@ -1,0 +1,97 @@
+<div class="container-fluid mt-3">
+    <div class="row g-3">
+        
+        <!-- COLUMNA IZQUIERDA: Catálogo y Búsqueda -->
+        <div class="col-lg-7 col-xl-8 order-2 order-lg-1">
+            <div class="card shadow-sm mb-3">
+                <div class="card-body p-2">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-primary"></i></span>
+                        <input type="text" class="form-control border-start-0" id="searchInput" placeholder="Buscar libro, ISBN, editorial..." autocomplete="off">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid de Resultados -->
+            <div id="resultsContainer" class="row g-2">
+                <div class="col-12 text-center text-muted mt-5">
+                    <i class="bi bi-arrow-up-circle display-4"></i>
+                    <p class="mt-2">Usa el buscador para encontrar libros.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: Carga Rápida & IA -->
+        <div class="col-lg-5 col-xl-4 order-1 order-lg-2">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-bold text-primary">
+                    <i class="bi bi-whatsapp"></i> Entrada de Pedido
+                </div>
+                <div class="card-body">
+                    <!-- Área IA -->
+                    <div class="mb-3">
+                        <div class="d-flex gap-2 mb-2">
+                            <button class="btn btn-primary flex-grow-1 py-2 fw-bold shadow-sm btn-magic" id="btnPasteAI" title="Atajo: F2">
+                                <i class="bi bi-clipboard-plus-fill"></i> PEGAR Y PROCESAR
+                            </button>
+                            <button class="btn btn-outline-secondary" id="btnClearForm" title="Limpiar formulario"><i class="bi bi-eraser"></i></button>
+                        </div>
+                        <textarea class="form-control bg-light" id="whatsappRawText" rows="4" placeholder="Pegar mensaje de WhatsApp aquí..."></textarea>
+                        <button class="btn btn-dark w-100 mt-2" id="btnProcessAI">
+                            <i class="bi bi-stars"></i> Procesar con IA
+                        </button>
+                    </div>
+
+                    <hr>
+
+                    <!-- Formulario Manual / Resultado IA -->
+                    <form id="orderForm" class="row g-2">
+                        <!-- Datos del Cliente / Pago -->
+                        <div class="col-md-6"><input type="text" class="form-control form-control-sm" placeholder="Nombre Cliente (Mamá)" id="inputClienteNombre"></div>
+                        <div class="col-md-6"><input type="tel" class="form-control form-control-sm" placeholder="Celular (549...)" id="inputClienteCelular"></div>
+                        
+                        <!-- Datos del Alumno -->
+                        <div class="col-md-8"><input type="text" class="form-control form-control-sm" placeholder="Alumno" id="inputAlumno"></div>
+                        <div class="col-md-4"><input type="text" class="form-control form-control-sm" placeholder="Grado" id="inputGrado"></div>
+                        <div class="col-12"><input type="text" class="form-control form-control-sm" placeholder="Colegio" id="inputColegio"></div>
+                        
+                        <input type="hidden" id="inputBookId">
+                        <div class="col-12"><input type="text" class="form-control form-control-sm fw-bold text-primary" placeholder="Libro Seleccionado" id="inputLibro" readonly></div>
+                        
+                        <div class="col-6"><input type="number" class="form-control form-control-sm" placeholder="Seña $" id="inputSenia"></div>
+                        <div class="col-6"><input type="number" class="form-control form-control-sm" placeholder="Total $" id="inputTotal"></div>
+                        
+                        <!-- Opción Clonar -->
+                        <div class="col-12"><div class="form-check small"><input class="form-check-input" type="checkbox" id="checkClone"><label class="form-check-label" for="checkClone">Modo "Mamá Referente" (Clonar x <input type="number" id="cloneQty" value="1" style="width:40px; border:none; border-bottom:1px solid #ccc" min="1"> alumnos)</label></div></div>
+                        
+                        <div class="col-12 mt-3">
+                            <button type="button" class="btn btn-success w-100 fw-bold" id="btnConfirmOrder">Confirmar Pedido</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Confirmación y Respuesta -->
+<div class="modal fade" id="responseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle"></i> Pedido Guardado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Copia este mensaje para responder al cliente:</p>
+                <textarea id="responseMessageText" class="form-control mb-3 bg-light" rows="5" readonly></textarea>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary btn-lg fw-bold" id="btnCopyResponse">
+                        <i class="bi bi-clipboard-check"></i> COPIAR RESPUESTA
+                    </button>
+                    <a href="#" id="btnOpenWhatsapp" target="_blank" class="btn btn-outline-success btn-sm">Abrir Chat (wa.me)</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
