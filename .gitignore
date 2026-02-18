@@ -1,0 +1,9 @@
+# Dependencias y logs (por si usas npm en el futuro)
+node_modules/
+npm-debug.log
+*.log
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+.vscode/

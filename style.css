@@ -1,0 +1,141 @@
+/* UX General */
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+}
+
+/* Diferenciación Visual: Waitlist vs Stock */
+.card-book {
+    transition: transform 0.2s;
+    border: 1px solid #e0e0e0;
+    font-size: 0.9rem; /* Texto más compacto */
+}
+
+.card-book:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+}
+
+/* Estilo para libros en lista de espera (Waitlist) */
+.book-waitlist {
+    background-color: #fff8f8; /* Fondo rojizo muy suave */
+    border-left: 5px solid #dc3545; /* Borde rojo a la izquierda */
+}
+
+.book-waitlist .badge-status {
+    background-color: #dc3545 !important;
+}
+
+/* Estilo para libros en Stock */
+.book-stock {
+    background-color: #ffffff;
+    border-left: 5px solid #198754;
+}
+
+.book-stock .badge-status {
+    background-color: #198754 !important;
+}
+
+/* Botones de Acción Rápida (WhatsApp/Copy) */
+.action-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.action-btn:active {
+    transform: scale(0.95);
+}
+
+/* Ajustes para inputs compactos en el form derecho */
+.form-control-sm {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+.form-control-sm:focus {
+    background-color: #fff;
+    border-color: #86b7fe;
+}
+
+/* Estilos para Impresión de Etiquetas (Ticket) */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #printableLabel, #printableLabel * {
+        visibility: visible;
+    }
+    #printableLabel {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 80mm; /* Ancho estándar de ticketera */
+        padding: 10px;
+        text-align: center;
+        border: 1px dashed #000;
+    }
+}
+
+/* Ocultar área de impresión en pantalla normal */
+#printableLabel {
+    display: none;
+}
+
+/* Estilos Kanban */
+.kanban-header {
+    padding: 8px 12px;
+    font-weight: bold;
+    border-radius: 5px 5px 0 0;
+    text-align: center;
+}
+.kanban-col {
+    min-height: 300px;
+    padding: 10px;
+    border-radius: 0 0 5px 5px;
+}
+
+/* Nueva Tarjeta de Libro (Horizontal) */
+.book-card-row {
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+}
+
+.book-thumbnail-container {
+    width: 80px;
+    min-width: 80px;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-in;
+    border-right: 1px solid #eee;
+    position: relative;
+}
+
+.book-thumbnail {
+    max-width: 100%;
+    max-height: 100px;
+    object-fit: contain;
+}
+
+.btn-load-arrow {
+    border-radius: 0;
+    font-size: 1.5rem;
+}
+
+.btn-copy-mini {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    padding: 1px 4px;
+    font-size: 0.7rem;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid #dee2e6;
+    z-index: 5;
+}

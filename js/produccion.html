@@ -1,0 +1,52 @@
+<div class="container-fluid mt-3">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <h5 class="text-secondary mb-0"><i class="bi bi-kanban"></i> Tablero de Producción</h5>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <!-- Filtros de Fecha -->
+                    <select id="filterDateMode" class="form-select form-select-sm" style="width: auto;">
+                        <option value="today">📅 Hoy</option>
+                        <option value="all">🗂️ Histórico (Todos)</option>
+                        <option value="date">📆 Fecha Específica</option>
+                    </select>
+                    <input type="date" id="filterDateInput" class="form-control form-control-sm d-none" style="width: auto;">
+
+                    <div class="input-group input-group-sm" style="width: 300px;">
+                        <input type="text" id="inputOrderSearch" class="form-control" placeholder="Buscar: Cliente, Alumno, Tracking...">
+                        <button class="btn btn-outline-primary" id="btnSearchOrder"><i class="bi bi-search"></i></button>
+                        <button class="btn btn-outline-secondary d-none" id="btnClearSearch" title="Borrar búsqueda"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                    <button class="btn btn-sm btn-outline-success" onclick="exportToCSV()"><i class="bi bi-file-earmark-excel"></i> Exportar</button>
+                </div>
+            </div>
+            
+            <!-- KANBAN BOARD -->
+            <div class="row g-3" id="kanbanBoard">
+                <!-- Columna 1: Pendiente (Gris) -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="kanban-header bg-secondary text-white">⏳ Pendiente</div>
+                    <div id="col-gris" class="kanban-col bg-light border"></div>
+                </div>
+                
+                <!-- Columna 2: Imprimiendo (Amarillo) -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="kanban-header bg-warning text-dark">🖨️ Imprimiendo</div>
+                    <div id="col-amarillo" class="kanban-col bg-light border"></div>
+                </div>
+                
+                <!-- Columna 3: Terminado (Azul) -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="kanban-header bg-primary text-white">✅ Terminado</div>
+                    <div id="col-azul" class="kanban-col bg-light border"></div>
+                </div>
+                
+                <!-- Columna 4: Entregado (Verde) -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="kanban-header bg-success text-white">🚀 Entregado</div>
+                    <div id="col-verde" class="kanban-col bg-light border"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
